@@ -1,26 +1,31 @@
 name: Update Data
 
 on:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
   schedule:
-    # - cron: '30 4 * * 0'
-    # - cron: "30 4 * * 6"
     - cron: "30 4 * * 1"
     - cron: "30 4 * * 2"
     - cron: "30 4 * * 3"
     - cron: "30 4 * * 4"
     - cron: "30 4 * * 5"
+  workflow_dispatch:
 
 jobs:
   process:
     permissions:
       contents: write
+
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+
     env:
-      USER: hantang
-      SRC_NAME: cinephile-code
+      USER: ${{ github.repository_owner }}
+      REPO_NAME: ${{ secrets.REPO_CINE }}
+      SRC_NAME: source
 
     steps:
       - uses: actions/checkout@v4
@@ -28,63 +33,63 @@ jobs:
       - name: Checkout src repo
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.USER }}/${{ env.SRC_NAME }}
-          token: ${{ secrets.GH_TOKEN }}
+          repository: ${{ env.USER }}/${{ env.REPO_NAME }}
+          token: ${{ secrets.GH_TOKEN_ACCESS }}
           path: ${{ env.SRC_NAME }}
           fetch-depth: 1
           ref: ${{ github.ref }}
 
       - name: Set up Python 3
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.x
 
       - name: Run script douban
         if: github.event.schedule == '30 4 * * 1'
         run: |
-          pushd ${{ env.SRC_NAME }} && 
+          pushd ${SRC_NAME} &&
           bash scripts/run-douban.sh douban-top &&
           popd
 
       - name: Run script anime
         if: github.event.schedule == '30 4 * * 2'
         run: |
-          pushd ${{ env.SRC_NAME }} && 
-          bash scripts/run-top.sh bangumi
-          bash scripts/run-top.sh myanimelist
+          pushd ${SRC_NAME} &&
+          bash scripts/run-top.sh bangumi &&
+          bash scripts/run-top.sh myanimelist &&
           popd
 
       - name: Run script movies1
         if: github.event.schedule == '30 4 * * 3'
         run: |
-          pushd ${{ env.SRC_NAME }} && 
-          bash scripts/run-top.sh letterboxd
-          bash scripts/run-top.sh metacritic
+          pushd ${SRC_NAME} &&
+          bash scripts/run-top.sh letterboxd  &&
+          bash scripts/run-top.sh metacritic  &&
           popd
 
       - name: Run script movies2
         if: github.event.schedule == '30 4 * * 4'
         run: |
-          pushd ${{ env.SRC_NAME }} && 
-          bash scripts/run-top.sh rateyourmusic
-          bash scripts/run-top.sh moviemeter
+          pushd ${SRC_NAME} &&
+          bash scripts/run-top.sh rateyourmusic  &&
+          bash scripts/run-top.sh moviemeter &&
           popd
 
       - name: Run script movies3
         if: github.event.schedule == '30 4 * * 5'
         run: |
-          pushd ${{ env.SRC_NAME }} && 
-          bash scripts/run-top.sh film101
-          bash scripts/run-top.sh filmweb
+          pushd ${SRC_NAME} &&
+          bash scripts/run-top.sh film101 &&
+          bash scripts/run-top.sh filmweb &&
           popd
 
       - name: Git auto commit
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v6
         with:
           commit_user_name: "github-actions[bot]"
           commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
           commit_author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          commit_message: Automated update by github action
+          commit_message: Automated update
           # commit_options: '--no-verify --signoff'
           push_options: "--force"
           file_pattern: "*.json"
